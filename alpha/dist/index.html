@@ -1,0 +1,39 @@
+<!--
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * @fileoverview
+ * The main HTML document and entry point for the 'Author' application.
+ *
+ * It establishes the basic page structure, links the necessary stylesheets and fonts, and
+ * provides the root DOM element (`<div id="root">`) for the React application to mount. It also
+ * configures module resolution for modern JavaScript dependencies using an import map and loads
+ * the initial script required to bootstrap the entire application.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Author</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-vaTC-ARt.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CQF9U_-3.css">
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>
