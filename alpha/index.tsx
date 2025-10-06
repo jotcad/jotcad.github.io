@@ -1619,6 +1619,37 @@ const App: React.FC = () => {
     });
   };
 
+  const handlePovChange = async (newPovId: string) => {
+    if (!books || !selectedBookId || !selectedPovId || !selectedEntryId || !newPovId || newPovId === selectedPovId) return;
+
+    const oldPovId = selectedPovId;
+    const updatedBooks = JSON.parse(JSON.stringify(books));
+    const bookToUpdate = updatedBooks[selectedBookId];
+
+    if (!bookToUpdate.povs[oldPovId] || !bookToUpdate.povs[oldPovId].entries[selectedEntryId]) {
+      console.error("Entry to move not found in old POV.");
+      return;
+    }
+    const entryToMove = bookToUpdate.povs[oldPovId].entries[selectedEntryId];
+
+    if (!bookToUpdate.povs[newPovId]) {
+        console.error("Target POV does not exist.");
+        return;
+    }
+    
+    // Copy to new POV
+    bookToUpdate.povs[newPovId].entries[selectedEntryId] = entryToMove;
+    
+    // Delete from old POV
+    delete bookToUpdate.povs[oldPovId].entries[selectedEntryId];
+
+    setBooks(updatedBooks);
+    await localStore.set(BOOKS_KEY, updatedBooks);
+
+    // Update the URL to reflect the new POV, preserving the 'from' view
+    window.location.hash = `#/view=editor&bookId=${selectedBookId}&povId=${newPovId}&entryId=${selectedEntryId}&from=${fromView}`;
+  };
+
   // --- Relationship Handlers ---
   const handleOpenNewRelationshipModal = () => {
     if (selectedBookId) {
@@ -2043,16 +2074,19 @@ const App: React.FC = () => {
                         onDeleteEntry={(id, name) => handleDeleteRequest({ type: 'entry', id, name })}
                     />;
         case 'editor':
-            if (!selectedEntry || !selectedBook || !selectedBookId) return null;
+            // FIX: Pass the `selectedPovId` and `onPovChange` props to the EditorView component to satisfy its props interface and enable POV changing functionality from the sidebar.
+            if (!selectedEntry || !selectedBook || !selectedBookId || !selectedPovId) return null;
             return <EditorView
                         selectedEntry={selectedEntry}
                         selectedBook={selectedBook}
                         selectedBookId={selectedBookId}
+                        selectedPovId={selectedPovId}
                         onTextChange={handleTextChange}
                         onSocketAdd={handleEntrySocketAdd}
                         onSocketChange={handleEntrySocketChange}
                         onSocketDelete={handleEntrySocketDelete}
                         onSelectEntry={handleSelectEntryFromGraph}
+                        onPovChange={handlePovChange}
                         disabled={isLoading || conflict !== null}
                     />;
         default:
