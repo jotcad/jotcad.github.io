@@ -202,6 +202,12 @@ const getConnectionPoints = (
     return { pathD, arrows };
 };
 
+const POV_COLORS = [
+    '#3366CC', '#DC3912', '#FF9900', '#109618', '#990099', '#0099C6',
+    '#DD4477', '#66AA00', '#B82E2E', '#316395', '#994499', '#22AA99',
+    '#AAAA11', '#6633CC', '#E67300', '#8B0707', '#651067', '#329262'
+];
+
 
 const GraphView: React.FC<GraphViewProps> = ({
     nodes: memoizedNodes,
@@ -375,6 +381,15 @@ const GraphView: React.FC<GraphViewProps> = ({
         finalNodes.forEach(node => positions.set(node.id, { x: node.x ?? 0, y: node.y ?? 0 }));
         return positions;
     }, [finalNodes]);
+
+    const povColors = useMemo(() => {
+        const povIds = [...new Set(memoizedNodes.map(n => n.povId))];
+        const colorMap = new Map<string, string>();
+        povIds.forEach((povId, index) => {
+            colorMap.set(povId, POV_COLORS[index % POV_COLORS.length]);
+        });
+        return colorMap;
+    }, [memoizedNodes]);
 
     const { socketPositionLayout, renderableSockets } = useMemo(() => {
         const updatedNodes = memoizedNodes.map(n => {
@@ -648,7 +663,21 @@ const GraphView: React.FC<GraphViewProps> = ({
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
-
+    
+        const getEventCoordinates = (e: MouseEvent | TouchEvent) => {
+            if ('touches' in e) { // TouchEvent
+                if (e.touches.length > 0) {
+                    return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+                }
+                if (e.changedTouches.length > 0) {
+                    return { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY };
+                }
+                return { clientX: 0, clientY: 0 }; 
+            }
+            // MouseEvent
+            return { clientX: e.clientX, clientY: e.clientY };
+        };
+    
         const screenToWorld = (clientX: number, clientY: number) => {
             if (!containerRef.current) return { x: 0, y: 0 };
             const rect = containerRef.current.getBoundingClientRect();
@@ -658,63 +687,70 @@ const GraphView: React.FC<GraphViewProps> = ({
                 y: (clientY - rect.top - viewY) / viewK,
             };
         };
-
-        const handleMouseMove = (e: MouseEvent) => {
+    
+        const handleInteractionMove = (e: MouseEvent | TouchEvent) => {
+            if ('touches' in e) {
+                e.preventDefault();
+            }
+    
             const interactionState = interactionStateRef.current;
             if (interactionState.mode === 'idle') return;
-
+    
+            const { clientX, clientY } = getEventCoordinates(e);
+    
             if (!interactionState.hasDragged) {
-                const dx = e.clientX - interactionState.startX;
-                const dy = e.clientY - interactionState.startY;
+                const dx = clientX - interactionState.startX;
+                const dy = clientY - interactionState.startY;
                 if (Math.sqrt(dx * dx + dy * dy) > 5) interactionState.hasDragged = true;
             }
-
+    
             if (interactionState.mode === 'draggingNode') {
                 const { draggedNode: currentDraggedNode, setDraggedNode } = stateRef.current;
                 if (!currentDraggedNode) return;
-                const { x, y } = screenToWorld(e.clientX, e.clientY);
+                const { x, y } = screenToWorld(clientX, clientY);
                 setDraggedNode({ ...currentDraggedNode, x: x - currentDraggedNode.offsetX, y: y - currentDraggedNode.offsetY });
             }
-
+    
             if (interactionState.mode === 'connecting') {
                 const { setNewConnection } = stateRef.current;
-                const worldPos = screenToWorld(e.clientX, e.clientY);
+                const worldPos = screenToWorld(clientX, clientY);
                 setNewConnection(c => c ? { ...c, endX: worldPos.x, endY: worldPos.y } : null);
             }
-
+    
             if (interactionState.mode === 'panning' && interactionState.hasDragged) {
                 const { setViewTransform } = stateRef.current;
-                const dx = e.clientX - interactionState.startX;
-                const dy = e.clientY - interactionState.startY;
+                const dx = clientX - interactionState.startX;
+                const dy = clientY - interactionState.startY;
                 setViewTransform(prev => ({ ...prev, x: interactionState.initialTransformX + dx, y: interactionState.initialTransformY + dy }));
             }
         };
-
-        const handleMouseUp = (e: MouseEvent) => {
+    
+        const handleInteractionEnd = (e: MouseEvent | TouchEvent) => {
             const interactionState = interactionStateRef.current;
             const { draggedNode: currentDraggedNode, newConnection: currentNewConnection, setDraggedNode, setNewConnection } = stateRef.current;
             const { onSelectEntry, onNodePositionChange, onAddRelationshipDirectly, onAddSocketAndConnect, onBackgroundClick, onToggleRelationshipInlined, links, occupiedInputSockets, nodes } = stateRef.current;
-
+    
+            const { clientX, clientY } = getEventCoordinates(e);
+    
             if (interactionState.mode === 'draggingNode' && currentDraggedNode) {
                 const originalNode = nodes.find(n => n.id === currentDraggedNode.id);
                 if (originalNode) {
                     if (interactionState.hasDragged) {
                         onNodePositionChange(originalNode, { x: currentDraggedNode.x, y: currentDraggedNode.y });
                     } else {
-                        // CLICK LOGIC
-                        const target = e.target as Element;
-                        if (target.closest('.raw-input-field')) {
+                        // CLICK/TAP LOGIC
+                        const target = 'target' in e ? e.target as Element : document.elementFromPoint(clientX, clientY);
+                        if (target?.closest('.raw-input-field')) {
                             (target as HTMLInputElement).focus();
-                        } else if (!target.closest('.entry-node--output-raw')) { 
+                        } else if (!target?.closest('.entry-node--output-raw')) { 
                             onSelectEntry(originalNode.bookId, originalNode.povId, originalNode.id);
                         }
-                        // For raw output, do nothing on click
                     }
                 }
             }
-
+    
             if (interactionState.mode === 'connecting' && currentNewConnection) {
-                const targetEl = document.elementFromPoint(e.clientX, e.clientY);
+                const targetEl = document.elementFromPoint(clientX, clientY);
                 const dropSocketTarget = targetEl?.closest('[data-socket-type]');
                 
                 if (dropSocketTarget) {
@@ -816,43 +852,54 @@ const GraphView: React.FC<GraphViewProps> = ({
             }
             
             if (interactionState.mode === 'panning' && !interactionState.hasDragged) {
-                const { x, y } = screenToWorld(e.clientX, e.clientY);
+                const { x, y } = screenToWorld(clientX, clientY);
                 onBackgroundClick({ x, y });
             }
-
+    
             interactionState.mode = 'idle';
             interactionState.hasDragged = false;
             setDraggedNode(null);
             setNewConnection(null);
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('mousemove', handleInteractionMove);
+            window.removeEventListener('mouseup', handleInteractionEnd);
+            window.removeEventListener('touchmove', handleInteractionMove);
+            window.removeEventListener('touchend', handleInteractionEnd);
+            window.removeEventListener('touchcancel', handleInteractionEnd);
         };
-
-        const handleMouseDown = (e: MouseEvent) => {
-            const target = e.target;
-            if (!(target instanceof Element)) return;
-
+    
+        const handleInteractionStart = (e: MouseEvent | TouchEvent) => {
+            if ('touches' in e && e.touches.length > 1) return;
+    
+            const { clientX, clientY } = getEventCoordinates(e);
+            const target = ('touches' in e && e.touches.length > 0 ? e.touches[0].target : 'target' in e ? e.target : null) as Element;
+            
+            if (!target) return;
+    
             if (target.closest('.socket-label') || target.closest('.node-content-input') || target.closest('.socket-inlined-input')) {
                 return;
             }
-
+    
             if (stateRef.current.inlineEditingSocket) {
                 return;
             }
-
+    
             const interactionState = interactionStateRef.current;
             
             if (target.closest('.generate-ideas-button, .refresh-button, .delete-entry-node-button, .add-input-socket-button, .add-output-socket-button, .socket-eject-button')) {
                 return;
             }
-
+    
             const socketTarget = target.closest('[data-socket-type]');
             const nodeTarget = target.closest('.entry-node-visuals, .entry-node--input-raw, .entry-node--output-raw');
-
-            interactionState.startX = e.clientX;
-            interactionState.startY = e.clientY;
+    
+            interactionState.startX = clientX;
+            interactionState.startY = clientY;
             
             if (socketTarget) {
+                if ('touches' in e) e.preventDefault();
+                e.stopPropagation();
+                interactionState.mode = 'connecting';
+                
                 const type = socketTarget.getAttribute('data-socket-type') as 'input' | 'output';
                 const positionAttr = socketTarget.getAttribute('data-socket-position');
                 const sideAttr = socketTarget.getAttribute('data-socket-side');
@@ -868,15 +915,9 @@ const GraphView: React.FC<GraphViewProps> = ({
 
                 if (type === 'input' && stateRef.current.occupiedInputSockets.has(`${nodeId}::${label}`)) {
                     const node = stateRef.current.nodes.find(n => n.id === nodeId);
-                    // Allow dragging from an occupied input ONLY if it's on an 'output' node (for re-docking)
-                    if (node && node.type !== 'output') {
-                        return;
-                    }
+                    if (node && node.type !== 'output') return;
                 }
 
-                e.stopPropagation();
-                interactionState.mode = 'connecting';
-                
                 const handleEl = socketTarget.querySelector('.socket-handle');
                 if (handleEl) {
                     const rect = handleEl.getBoundingClientRect();
@@ -897,15 +938,16 @@ const GraphView: React.FC<GraphViewProps> = ({
                 }
                 
             } else if (nodeTarget) {
-                e.preventDefault();
-                e.stopPropagation();
+                if ('touches' in e) e.stopPropagation();
+                else { e.preventDefault(); e.stopPropagation(); }
+                
                 interactionState.mode = 'draggingNode';
                 const nodeId = nodeTarget.closest('.entry-node')?.getAttribute('data-id')!;
                 const { nodes, setDraggedNode } = stateRef.current;
                 const node = nodes.find(n => n.id === nodeId);
                 if (!node) return;
 
-                const worldPos = screenToWorld(e.clientX, e.clientY);
+                const worldPos = screenToWorld(clientX, clientY);
                 const nodeX = node.x ?? 0;
                 const nodeY = node.y ?? 0;
                 
@@ -918,8 +960,12 @@ const GraphView: React.FC<GraphViewProps> = ({
                 interactionState.initialTransformX = x;
                 interactionState.initialTransformY = y;
             }
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
+
+            window.addEventListener('mousemove', handleInteractionMove);
+            window.addEventListener('mouseup', handleInteractionEnd);
+            window.addEventListener('touchmove', handleInteractionMove, { passive: false });
+            window.addEventListener('touchend', handleInteractionEnd);
+            window.addEventListener('touchcancel', handleInteractionEnd);
         };
         
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -936,14 +982,19 @@ const GraphView: React.FC<GraphViewProps> = ({
             }
         };
 
-        container.addEventListener('mousedown', handleMouseDown);
+        container.addEventListener('mousedown', handleInteractionStart);
+        container.addEventListener('touchstart', handleInteractionStart, { passive: false });
         window.addEventListener('keydown', handleKeyDown);
 
         return () => {
-            container.removeEventListener('mousedown', handleMouseDown);
+            container.removeEventListener('mousedown', handleInteractionStart);
+            container.removeEventListener('touchstart', handleInteractionStart);
             window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('mousemove', handleInteractionMove);
+            window.removeEventListener('mouseup', handleInteractionEnd);
+            window.removeEventListener('touchmove', handleInteractionMove);
+            window.removeEventListener('touchend', handleInteractionEnd);
+            window.removeEventListener('touchcancel', handleInteractionEnd);
         };
     }, []); 
 
@@ -1116,6 +1167,8 @@ const GraphView: React.FC<GraphViewProps> = ({
                             <EntryNode
                                 key={node.id}
                                 node={node}
+                                povColor={povColors.get(node.povId)}
+                                povTitle={node.povTitle}
                                 renderableSocketsForNode={nodeSockets}
                                 socketPositionLayoutForNode={layout}
                                 occupiedInputSockets={occupiedInputSockets}

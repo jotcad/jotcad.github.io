@@ -14,10 +14,12 @@ interface EditorSidebarProps {
     entry: Entry;
     book: Book;
     bookId: string | null;
+    selectedPovId: string | null;
     onSelectEntry: (bookId: string, povId: string, entryId: string) => void;
     onSocketAdd: (type: 'input' | 'output', label: string) => void;
     onSocketChange: (type: 'input' | 'output', oldLabel: string, newLabel: string) => void;
     onSocketDelete: (type: 'input' | 'output', label: string) => void;
+    onPovChange: (newPovId: string) => void;
 }
 
 const SocketSection: React.FC<{
@@ -60,6 +62,7 @@ const SocketSection: React.FC<{
 
     return (
         <div className="sidebar-section">
+            <h4>{type === 'input' ? 'Inputs' : 'Outputs'}</h4>
             <ul>
                 {sockets.length === 0 && <li className="sidebar-no-sockets-placeholder">None</li>}
                 {sockets.map(socket => {
@@ -176,7 +179,7 @@ const SocketSection: React.FC<{
     );
 };
 
-const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, onSelectEntry, onSocketAdd, onSocketChange, onSocketDelete }) => {
+const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, selectedPovId, onSelectEntry, onSocketAdd, onSocketChange, onSocketDelete, onPovChange }) => {
 
     const connections = useMemo(() => {
         const allEntriesMap = new Map<string, { entry: Entry, povId: string }>();
@@ -234,6 +237,21 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, onSe
 
     return (
         <div className="sidebar-content">
+             <div className="sidebar-section">
+                <h4>Point of View</h4>
+                <select
+                    className="sidebar-pov-selector"
+                    value={selectedPovId || ''}
+                    onChange={(e) => onPovChange(e.target.value)}
+                    disabled={Object.keys(book.povs).length <= 1}
+                >
+                    {Object.entries(book.povs).map(([povId, pov]) => (
+                        <option key={povId} value={povId}>
+                            {pov.title || 'Untitled POV'}
+                        </option>
+                    ))}
+                </select>
+            </div>
              <SocketSection
                 type="input"
                 icon={inputIcon}

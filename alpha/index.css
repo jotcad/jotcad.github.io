@@ -55,7 +55,7 @@ body {
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 1rem;
   padding: 0 1rem;
@@ -234,6 +234,10 @@ body {
     font-weight: 600;
     color: #1877f2;
     transition: background-color 0.2s ease, color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
 }
 .view-toggle-button:not(:last-child) {
     border-right: 2px solid #1877f2;
@@ -1501,27 +1505,140 @@ body {
 }
 
 
-/* New Editor Layout */
+/* New Editor Layout & Sidebar */
 .editor-view-layout {
     display: flex;
     width: 100%;
     height: 100%;
+    position: relative;
+    overflow: hidden;
 }
 
 .editor-main {
     flex-grow: 1;
     height: 100%;
-    display: flex; /* To contain its children */
+    display: flex;
+    min-width: 0;
+    transition: filter 0.3s ease-in-out;
 }
 
 .editor-sidebar {
-    width: 300px;
-    flex-shrink: 0;
     height: 100%;
-    border-left: 1px solid #ccd0d5;
     background-color: #f9f9f9;
-    padding: 1rem;
     overflow-y: auto;
+    transition: all 0.3s ease-in-out;
+    padding: 1rem;
+}
+
+.editor-sidebar-divider {
+    flex-shrink: 0;
+    background-color: #e4e6eb;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a8d91;
+    z-index: 51;
+}
+.editor-sidebar-divider:hover {
+    background-color: #1877f2;
+    color: white;
+}
+.editor-sidebar-divider svg {
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Wide screen layout (default) */
+@media (min-width: 901px) {
+    .editor-sidebar {
+        width: 300px;
+        flex-shrink: 0;
+        border-left: 1px solid #ccd0d5;
+    }
+    .editor-sidebar-divider {
+        width: 12px;
+        cursor: col-resize;
+    }
+    .editor-view-layout.sidebar-closed .editor-sidebar {
+        width: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        border-left: none;
+        overflow: hidden;
+    }
+    .editor-view-layout.sidebar-closed .editor-sidebar-divider svg {
+        transform: rotate(180deg);
+    }
+}
+
+/* Narrow screen overlay layout */
+@media (max-width: 900px) {
+    .editor-sidebar {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        z-index: 50;
+        transform: translateX(100%);
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    }
+    .editor-sidebar-divider {
+        position: absolute;
+        top: 45%;
+        right: 0;
+        width: 24px;
+        height: 70px;
+        cursor: pointer;
+        border-radius: 8px 0 0 8px;
+        transform: translateX(0);
+        transition: transform 0.3s ease-in-out, background-color 0.2s ease;
+    }
+    .editor-view-layout.sidebar-open .editor-sidebar {
+        transform: translateX(0);
+    }
+    .editor-view-layout.sidebar-open .editor-sidebar-divider {
+        transform: translateX(-300px);
+    }
+    .editor-view-layout.sidebar-open .editor-sidebar-divider svg {
+        transform: rotate(180deg);
+    }
+    .editor-view-layout.sidebar-open .editor-main {
+        filter: brightness(0.6);
+        pointer-events: none;
+    }
+}
+
+/* Header responsiveness */
+@media (max-width: 768px) {
+    .app-header {
+        gap: 0.5rem;
+        padding: 0 0.5rem;
+    }
+    .header-button span, .view-toggle-button span {
+        display: none;
+    }
+    .header-button, .view-toggle-button, .header-back-button, .header-type-selector {
+        height: 44px;
+        min-width: 44px;
+    }
+    .view-toggle-group {
+        height: 44px;
+    }
+    .header-button, .view-toggle-button {
+      padding: 0;
+      width: 44px;
+    }
+    .header-type-selector {
+        padding-left: 0.25rem;
+        padding-right: 1.5rem; /* for the dropdown arrow */
+        font-size: 0.8rem;
+    }
+    .header-title-input {
+        font-size: 1.1rem;
+    }
+    .header-title-wrapper {
+        gap: 0.5rem;
+    }
 }
 
 /* Narrative Entry */
@@ -1635,6 +1752,20 @@ body {
     margin-bottom: 0.25rem;
 }
 
+.sidebar-pov-selector {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccd0d5;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background-color: #fff;
+    margin-top: 0.5rem;
+}
+.sidebar-pov-selector:disabled {
+    background-color: #f0f2f5;
+    color: #8a8d91;
+}
+
 .sidebar-socket-item {
     display: flex;
     justify-content: space-between;
@@ -1742,4 +1873,63 @@ body {
     cursor: pointer;
     border-radius: 0 4px 4px 0;
     font-weight: bold;
+}
+
+@media (max-width: 480px) {
+    .app-header {
+        height: 50px;
+        gap: 0.25rem;
+        padding: 0 0.25rem;
+    }
+
+    .header-left, .header-right {
+        gap: 0.25rem;
+    }
+
+    .header-button, .view-toggle-button, .header-back-button, .header-type-selector {
+        height: 36px;
+        min-width: 36px;
+    }
+
+    .view-toggle-group {
+        height: 36px;
+    }
+
+    .header-button, .view-toggle-button {
+        width: 36px;
+    }
+    
+    .header-button svg, 
+    .view-toggle-button svg, 
+    .header-back-button svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .header-type-selector {
+        font-size: 0.75rem;
+        padding-right: 1.25rem;
+    }
+
+    .header-title-input {
+        font-size: 1rem;
+    }
+    
+    .header-title-label {
+        font-size: 1rem;
+    }
+
+    .sync-status-wrapper {
+        width: 10px;
+        height: 10px;
+    }
+    .status-indicator-dot {
+        width: 10px;
+        height: 10px;
+    }
+    .has-unsynced-ring::before {
+        width: 16px;
+        height: 16px;
+        border-width: 1.5px;
+    }
 }

@@ -162,33 +162,49 @@ const Header: React.FC<HeaderProps> = (props) => {
             <div className="header-right">
                 {view === 'list' && books !== null && (
                     <button onClick={onAddNewBook} className="header-button" aria-label="Add New Book">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         <span>+ Book</span>
                     </button>
                 )}
                  {view === 'povList' && (
                     <button onClick={onAddNewPov} className="header-button" aria-label="Add New Point of View">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         <span>+ POV</span>
                     </button>
                 )}
                  {view === 'entryList' && (
                     <button onClick={onAddNewEntry} className="header-button" aria-label="Add New Entry">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         <span>+ Entry</span>
                     </button>
                 )}
                 {['list', 'globalGraph'].includes(view) && (
                      <div className="view-toggle-group">
-                        <button onClick={onNavigateToList} className={`view-toggle-button ${view === 'list' ? 'active' : ''}`}>List</button>
-                        <button onClick={onNavigateToGlobalGraph} className={`view-toggle-button ${view === 'globalGraph' ? 'active' : ''}`}>Graph</button>
+                        <button onClick={onNavigateToList} className={`view-toggle-button ${view === 'list' ? 'active' : ''}`} title="List View">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            <span>List</span>
+                        </button>
+                        <button onClick={onNavigateToGlobalGraph} className={`view-toggle-button ${view === 'globalGraph' ? 'active' : ''}`} title="Graph View">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                            <span>Graph</span>
+                        </button>
                     </div>
                 )}
                 {['povList', 'graph'].includes(view) && (
                      <div className="view-toggle-group">
-                        <button onClick={onNavigateToPovList} className={`view-toggle-button ${view === 'povList' ? 'active' : ''}`}>List</button>
-                        <button onClick={onNavigateToGraph} className={`view-toggle-button ${view === 'graph' ? 'active' : ''}`}>Graph</button>
+                        <button onClick={onNavigateToPovList} className={`view-toggle-button ${view === 'povList' ? 'active' : ''}`} title="List View">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            <span>List</span>
+                        </button>
+                        <button onClick={onNavigateToGraph} className={`view-toggle-button ${view === 'graph' ? 'active' : ''}`} title="Graph View">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                            <span>Graph</span>
+                        </button>
                     </div>
                 )}
                  {(view === 'graph' || view === 'globalGraph') && (
                     <button onClick={onOpenRelationshipModal} className="header-button" aria-label="Add New Relationship" disabled={view === 'globalGraph'}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         <span>+ Link</span>
                     </button>
                 )}

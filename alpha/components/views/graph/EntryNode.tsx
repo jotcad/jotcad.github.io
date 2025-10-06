@@ -15,6 +15,8 @@ import { SocketPosition, SocketSide, SocketInfo } from './types.ts';
 
 interface EntryNodeProps {
     node: GraphNode & { x: number, y: number }; // position is guaranteed here
+    povColor?: string;
+    povTitle?: string;
     renderableSocketsForNode: { [key in SocketSide]: SocketInfo[] };
     socketPositionLayoutForNode: { inputs: Map<string, SocketPosition>; outputs: Map<string, SocketPosition> };
     occupiedInputSockets: Set<string>;
@@ -39,6 +41,8 @@ interface EntryNodeProps {
 
 const EntryNode: React.FC<EntryNodeProps> = ({
     node,
+    povColor,
+    povTitle,
     renderableSocketsForNode,
     socketPositionLayoutForNode,
     occupiedInputSockets,
@@ -144,14 +148,22 @@ const EntryNode: React.FC<EntryNodeProps> = ({
     // have editable sockets. The previous check was redundant.
     const areSocketsEditable = true;
     
+    const visualStyle = {
+        borderTop: povColor ? `4px solid ${povColor}` : undefined,
+    };
+
     return (
         <div
             key={node.id}
             data-id={node.id}
             className="entry-node"
             style={{ top: `${node.y}px`, left: `${node.x}px` }}
+            title={povTitle}
         >
-            <div className={`entry-node-visuals ${nodeTypeClass} ${node.dirty ? 'dirty' : ''}`}>
+            <div
+                className={`entry-node-visuals ${nodeTypeClass} ${node.dirty ? 'dirty' : ''}`}
+                style={visualStyle}
+            >
                 {(['top', 'right', 'bottom', 'left'] as SocketSide[]).map(side => (
                     <div key={side} className={`socket-container ${side}`}>
                         {renderableSocketsForNode[side].map(socket => {

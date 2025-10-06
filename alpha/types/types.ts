@@ -62,6 +62,7 @@ export interface GraphNode {
     id: string; // entry id
     title: string;
     povId: string;
+    povTitle: string;
     bookId: string;
     type?: 'prose' | 'js' | 'nl' | 'input' | 'output';
     content?: string;
