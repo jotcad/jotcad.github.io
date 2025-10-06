@@ -275,8 +275,9 @@ const GraphView: React.FC<GraphViewProps> = ({
         const occupied = new Set<string>();
         validLinks.forEach(link => {
             const targetId = getLinkEndpointId(link.target);
+            // FIX: Argument of type 'unknown' is not assignable to parameter of type 'string'.
             if (targetId && link.targetLabel) {
-                occupied.add(`${targetId}::${link.targetLabel}`);
+                occupied.add(`${targetId}::${link.targetLabel as string}`);
             }
         });
         return occupied;

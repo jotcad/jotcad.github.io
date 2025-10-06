@@ -1899,6 +1899,8 @@ const App: React.FC = () => {
             id: entry.id,
             title: entry.versions[entry.activeVersionId]?.title || 'Untitled Entry',
             povId: povId,
+            // FIX: Add povTitle to satisfy the GraphNode type.
+            povTitle: pov.title || 'Untitled POV',
             bookId: selectedBookId,
             type: entry.type || 'prose',
             content: entry.versions[entry.activeVersionId]?.content || '',
@@ -1932,6 +1934,8 @@ const App: React.FC = () => {
                   id: entry.id,
                   title: entry.versions[entry.activeVersionId]?.title || 'Untitled Entry',
                   povId: povId,
+                  // FIX: Add povTitle to satisfy the GraphNode type.
+                  povTitle: pov.title || 'Untitled POV',
                   bookId: bookId,
                   type: entry.type || 'prose',
                   content: entry.versions[entry.activeVersionId]?.content || '',

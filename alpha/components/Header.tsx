@@ -137,11 +137,11 @@ const Header: React.FC<HeaderProps> = (props) => {
         }
         return (
             <h1>
-                {view === 'list' ? 'Author' :
+                {view === 'list' ? 'Author 0.0.1' :
                  view === 'globalGraph' ? 'All Books' :
                  view === 'povList' || view === 'graph' ? (books?.[selectedBookId]?.title || 'Book') :
                  view === 'entryList' ? (books?.[selectedBookId]?.povs?.[selectedPovId]?.title || 'Point of View') :
-                 'Author'
+                 'Author 0.0.1'
                 }
             </h1>
         );

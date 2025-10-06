@@ -107,13 +107,14 @@ const SocketSection: React.FC<{
                             const conn = connectedOutputs[0];
                             return (
                                 <a
-                                    href={`#/view=editor&bookId=${bookId}&povId=${conn.povId}&entryId=${conn.id}`}
+                                    // FIX: Property 'title' does not exist on type 'unknown'.
+                                    href={`#/view=editor&bookId=${bookId}&povId=${(conn as any).povId}&entryId=${(conn as any).id}`}
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        onSelectEntry(bookId!, conn.povId, conn.id);
+                                        onSelectEntry(bookId!, (conn as any).povId, (conn as any).id);
                                     }}
                                     className="socket-label-sidebar link"
-                                    title={`Connected to: ${conn.title} (${conn.targetSocketLabel})`}
+                                    title={`Connected to: ${(conn as any).title} (${(conn as any).targetSocketLabel})`}
                                 >
                                     {socket.socketLabel}
                                 </a>
