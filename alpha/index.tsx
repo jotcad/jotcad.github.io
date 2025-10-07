@@ -26,9 +26,11 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createRoot } from 'react-dom/client';
 import { GOOGLE_CLIENT_ID, GOOGLE_API_KEY } from './config.js';
 import { IDBStore, HierarchicalKey } from './idb-store.tsx';
-import { Books, Version, BaseData, Conflict, Relationship, Pov, Entry, GraphNode, Book } from './types/types.ts';
+import { Books, Version, BaseData, EntryConflict, Relationship, Pov, Entry, GraphNode, Book } from './types/types.ts';
 import { GoogleDriveKVStore } from './services/googleDrive.ts';
 import { migrateBooksData } from './utils/dataMigration.ts';
+import { threeWayMerge } from './utils/threeWayMerge.ts';
+import { generateDiffHTML } from './utils/diff.ts';
 import { GoogleGenAI, Type } from "@google/genai";
 import Header from './components/Header.tsx';
 import BookListView from './components/views/BookListView.tsx';
@@ -38,7 +40,6 @@ import EditorView from './components/views/EditorView.tsx';
 import GraphView from './components/views/GraphView.tsx';
 import ConfirmDeleteModal from './components/modals/ConfirmDeleteModal.tsx';
 import ConfirmImportModal from './components/modals/ConfirmImportModal.tsx';
-import ConflictModal from './components/modals/ConflictModal.tsx';
 import SaveVersionModal from './components/modals/SaveVersionModal.tsx';
 import SettingsModal from './components/modals/SettingsModal.tsx';
 import VersionSelectorModal from './components/modals/VersionSelectorModal.tsx';
@@ -108,6 +109,64 @@ const createExampleData = (): { exampleData: Books, exampleBookId: string } => {
         };
     };
 
+    // --- Create Conflict Example Data ---
+    const versionBaseId = `v-${entryRewardId}-base`;
+    const versionLocalId = `v-${entryRewardId}-local`;
+    const versionRemoteId = `v-${entryRewardId}-remote`;
+
+    const baseVersion: Version = {
+        id: versionBaseId,
+        timestamp: now - 10000,
+        title: "The Reward",
+        content: "Having survived death, the hero takes possession of the treasure they've been seeking.",
+        name: "Base Version"
+    };
+
+    const localVersion: Version = {
+        id: versionLocalId,
+        timestamp: now - 5000,
+        title: "Seizing the Reward",
+        content: "Having survived death, the hero forcefully takes possession of the treasure they've been seeking.",
+        name: "Local Version"
+    };
+    
+    const remoteVersion: Version = {
+        id: versionRemoteId,
+        timestamp: now - 4000,
+        title: "The Cursed Reward",
+        content: "Having survived death, the hero takes possession of the cursed artifact they've been seeking.",
+        name: "Remote Version"
+    };
+    
+    const conflictedEntry: Entry = {
+        id: entryRewardId,
+        activeVersionId: versionLocalId,
+        type: 'prose',
+        versions: {
+            [versionBaseId]: baseVersion,
+            [versionLocalId]: localVersion,
+            [versionRemoteId]: remoteVersion,
+        },
+        x: 1600, y: 150,
+        inputs: ["From Victory"], outputs: ["To the Road Back"],
+        dirty: false,
+        conflict: true, // Flag the entry as having a conflict
+    };
+    
+    const baseEntryForConflict: Entry = { ...conflictedEntry, activeVersionId: versionBaseId };
+    const remoteEntryForConflict: Entry = { ...conflictedEntry, activeVersionId: versionRemoteId };
+    const localEntryForConflict: Entry = { ...conflictedEntry, activeVersionId: versionLocalId };
+
+    const rewardConflict: Omit<EntryConflict, 'bookId' | 'bookTitle' | 'povTitle'> = {
+        povId: povProtagonistId,
+        entryId: entryRewardId,
+        base: baseEntryForConflict,
+        local: localEntryForConflict,
+        remote: remoteEntryForConflict,
+        type: 'modify-modify',
+    };
+
+
     const exampleData: Books = {
         [bookId]: {
             title: "The Hero's Journey",
@@ -118,7 +177,7 @@ const createExampleData = (): { exampleData: Books, exampleBookId: string } => {
                         [entryCallId]: createEntry(entryCallId, "The Call to Adventure", "Our hero receives a mysterious message, urging them toward an unknown destiny.", 100, 300, [], ["Refused the Call", "Accepted the Call", "Story Beat"]),
                         [entryRefusalId]: createEntry(entryRefusalId, "Refusal of the Call", "Filled with doubt and fear, the hero initially rejects the call.", 400, 150, ["From the Call"], ["To the Mentor"]),
                         [entryThresholdId]: createEntry(entryThresholdId, "Crossing the Threshold", "Committing to the journey, the hero enters the special world of the adventure.", 1000, 300, ["From Mentor's Aid"], ["To the Ordeal"]),
-                        [entryRewardId]: createEntry(entryRewardId, "The Reward", "Having survived death, the hero takes possession of the treasure they've been seeking.", 1600, 150, ["From Victory"], ["To the Road Back"]),
+                        [entryRewardId]: conflictedEntry,
                         [entryRoadBackId]: createEntry(entryRoadBackId, "The Road Back", "The hero begins their journey back to their ordinary life, but the adventure is not yet over.", 1900, 300, ["From the Reward"], ["Journey's End"]),
                     }
                 },
@@ -180,7 +239,10 @@ const createExampleData = (): { exampleData: Books, exampleBookId: string } => {
                 { id: `rel-${now + 12}`, sourceEntryId: entryCallId, targetEntryId: entryNlSummaryId, sourceLabel: "Story Beat", targetLabel: "call" },
                 { id: `rel-${now + 13}`, sourceEntryId: entryOrdealId, targetEntryId: entryNlSummaryId, sourceLabel: "Story Beat", targetLabel: "ordeal" },
                 { id: `rel-${now + 14}`, sourceEntryId: entryNlSummaryId, targetEntryId: entryOutputSummaryId, sourceLabel: "summary", targetLabel: "value" },
-            ]
+            ],
+            conflicts: {
+                [entryRewardId]: rewardConflict,
+            }
         }
     };
     return { exampleData, exampleBookId: bookId };
@@ -194,7 +256,6 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conflict, setConflict] = useState<Conflict<Books> | null>(null);
   const [focusAfterRender, setFocusAfterRender] = useState<'book' | 'pov' | 'entry' | null>(null);
 
   const [store, setStore] = useState<GoogleDriveKVStore | null>(null);
@@ -218,9 +279,22 @@ const App: React.FC = () => {
   const localStore = useMemo(() => new IDBStore(), []);
   const bookTitleInputRef = useRef<HTMLInputElement>(null);
   const povTitleInputRef = useRef<HTMLInputElement>(null);
-  const entryTitleInputRef = useRef<HTMLInputElement>(null);
+  const entryTitleInputRef = useRef<HTMLDivElement>(null);
   const BOOKS_KEY: HierarchicalKey = useMemo(() => ['app-data', 'books'], []);
   const BASE_KEY: HierarchicalKey = useMemo(() => ['app-data', 'base'], []);
+  const wasConflictPresent = useRef(false);
+
+  // --- Derived State for Conflicts ---
+  const hasConflicts = useMemo<boolean>(() => {
+    if (!books) return false;
+    for (const bookId in books) {
+        const book = books[bookId];
+        if (book.conflicts && Object.keys(book.conflicts).length > 0) {
+            return true;
+        }
+    }
+    return false;
+  }, [books]);
 
   // --- Routing ---
   useEffect(() => {
@@ -346,7 +420,7 @@ const App: React.FC = () => {
     const gapiScript = document.createElement('script');
     gapiScript.src = 'https://apis.google.com/js/api.js';
     gapiScript.async = true;
-    gapiScript.defer = true;
+    gsiScript.defer = true;
     gapiScript.onload = () => {
       window.gapi.load('client:picker', () => {
           setIsPickerApiLoaded(true);
@@ -360,7 +434,6 @@ const App: React.FC = () => {
     setAccessToken(null);
     setStore(null);
     setError(null);
-    setConflict(null);
   }, []);
   
   // Effect for sync and conflict detection
@@ -369,45 +442,66 @@ const App: React.FC = () => {
       if (!store) return;
       setIsLoading(true);
       setError(null);
-      setConflict(null);
 
       try {
-        const remoteData = await store.getContentAndRevision('books', {});
-        const { migratedBooks: remoteBooks } = migrateBooksData(remoteData.value);
+        const remoteDataResponse = await store.getContentAndRevision('books', {});
+        const { migratedBooks: remoteBooks } = migrateBooksData(remoteDataResponse.value);
         
         const localBooksData = await localStore.get<Books>(BOOKS_KEY) ?? {};
         const { migratedBooks: localBooks } = migrateBooksData(localBooksData);
         
-        const base = await localStore.get<BaseData<Books>>(BASE_KEY);
+        const baseData = await localStore.get<BaseData<Books>>(BASE_KEY);
+        const baseBooks = baseData?.books ? migrateBooksData(baseData.books).migratedBooks : {};
         
-        if (!base) {
+        const processMerge = async (base: Books, local: Books, remote: Books) => {
+            const { mergedData, conflicts } = threeWayMerge(base, local, remote);
+            
+            // Embed conflicts into the data model for persistence
+            conflicts.forEach(conflict => {
+                const book = mergedData[conflict.bookId];
+                if (book) {
+                    if (!book.conflicts) book.conflicts = {};
+                    const { bookId, bookTitle, povTitle, ...rest } = conflict;
+                    book.conflicts[conflict.entryId] = rest;
+
+                    // Mark entry as conflicted
+                    const pov = book.povs[conflict.povId];
+                    if (pov && pov.entries[conflict.entryId]) {
+                        pov.entries[conflict.entryId].conflict = true;
+                    }
+                }
+            });
+
+            setBooks(mergedData);
+            await localStore.set(BOOKS_KEY, mergedData);
+
+            if (conflicts.length === 0) {
+                const updatedFile = await store.set('books', mergedData);
+                await localStore.set(BASE_KEY, { books: mergedData, revisionId: updatedFile.headRevisionId });
+            }
+        };
+
+        if (!baseData) { // First time syncing on this device
             const remoteIsNotEmpty = Object.keys(remoteBooks).length > 0;
             if (remoteIsNotEmpty) {
                 const localIsNotEmpty = Object.keys(localBooks).length > 0;
                 if (localIsNotEmpty && JSON.stringify(localBooks) !== JSON.stringify(remoteBooks)) {
-                    setConflict({ local: localBooks, remote: remoteBooks, remoteRevisionId: remoteData.revisionId });
-                } else {
+                    await processMerge({}, localBooks, remoteBooks);
+                } else { // Local is empty or same as remote, just take remote.
                     setBooks(remoteBooks);
                     await localStore.set(BOOKS_KEY, remoteBooks);
-                    await localStore.set(BASE_KEY, { books: remoteBooks, revisionId: remoteData.revisionId });
+                    await localStore.set(BASE_KEY, { books: remoteBooks, revisionId: remoteDataResponse.revisionId });
                 }
-            } else {
-                await localStore.set(BASE_KEY, { books: {}, revisionId: remoteData.revisionId });
+            } else { // Remote is empty.
+                await localStore.set(BASE_KEY, { books: localBooks, revisionId: remoteDataResponse.revisionId });
             }
-        } else {
-            const remoteHasChanged = remoteData.revisionId !== base.revisionId;
-            const localHasChanged = JSON.stringify(localBooks) !== JSON.stringify(base.books);
-          
-            if (remoteHasChanged && localHasChanged) {
-                if (JSON.stringify(localBooks) === JSON.stringify(remoteBooks)) {
-                    await localStore.set(BASE_KEY, { books: localBooks, revisionId: remoteData.revisionId });
-                } else {
-                    setConflict({ local: localBooks, remote: remoteBooks, remoteRevisionId: remoteData.revisionId });
-                }
-            } else if (remoteHasChanged) {
-                setBooks(remoteBooks);
-                await localStore.set(BOOKS_KEY, remoteBooks);
-                await localStore.set(BASE_KEY, { books: remoteBooks, revisionId: remoteData.revisionId });
+
+        } else { // Normal sync with a base
+            const remoteHasChanged = remoteDataResponse.revisionId !== baseData.revisionId;
+            const localHasChanged = JSON.stringify(localBooks) !== JSON.stringify(baseBooks);
+            
+            if (remoteHasChanged) {
+                 await processMerge(baseBooks, localBooks, remoteBooks);
             }
         }
       } catch (e: any) {
@@ -427,6 +521,11 @@ const App: React.FC = () => {
         }
 
         const checkSyncStatus = async () => {
+            if (hasConflicts) {
+                setIsSynced(false);
+                return;
+            }
+
             const base = await localStore.get<BaseData<Books>>(BASE_KEY);
             const lastSyncedBooks = base?.books;
 
@@ -441,11 +540,11 @@ const App: React.FC = () => {
         };
 
         checkSyncStatus();
-    }, [books, isLoading, localStore, BASE_KEY]);
+    }, [books, isLoading, localStore, BASE_KEY, hasConflicts]);
 
   // Effect for debounced saving to cloud
   useEffect(() => {
-    if (!store || isLoading || conflict || books === null || isSynced) {
+    if (!store || isLoading || hasConflicts || books === null || isSynced) {
         return;
     }
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
@@ -473,8 +572,38 @@ const App: React.FC = () => {
     return () => {
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
     };
-  }, [books, store, isLoading, conflict, localStore, BASE_KEY, handleSignOut, isSynced]);
+  }, [books, store, isLoading, hasConflicts, localStore, BASE_KEY, handleSignOut, isSynced]);
   
+  const handleManualSync = useCallback(async () => {
+    if (!store || books === null || isSaving) return;
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+
+    setIsSaving(true);
+    setError(null);
+    try {
+        const updatedFile = await store.set('books', books);
+        await localStore.set(BASE_KEY, { books, revisionId: updatedFile.headRevisionId });
+        setIsSynced(true);
+    } catch (e: any) {
+        setError(e.message);
+        if (e.message.includes('sign in again')) handleSignOut();
+    } finally {
+        setIsSaving(false);
+    }
+  }, [store, books, localStore, BASE_KEY, handleSignOut, isSaving]);
+  
+  // Effect to save automatically after all conflicts are resolved
+  useEffect(() => {
+    if (hasConflicts) {
+      wasConflictPresent.current = true;
+    }
+    if (wasConflictPresent.current && !hasConflicts && accessToken) {
+      handleManualSync();
+      wasConflictPresent.current = false;
+    }
+  }, [hasConflicts, accessToken, handleManualSync]);
+
+
   // Effect to handle auto-focusing on new items
   useEffect(() => {
     if (focusAfterRender === 'book' && bookTitleInputRef.current) {
@@ -619,21 +748,6 @@ const App: React.FC = () => {
       }
   };
 
-  const resolveConflict = async (chosenBooks: Books) => {
-    setIsLoading(true);
-    setConflict(null);
-    try {
-        const updatedFile = await store.set('books', chosenBooks);
-        setBooks(chosenBooks);
-        await localStore.set(BOOKS_KEY, chosenBooks);
-        await localStore.set(BASE_KEY, { books: chosenBooks, revisionId: updatedFile.headRevisionId });
-    } catch (e: any) {
-        setError(e.message);
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
   const handleSignIn = () => {
     if (tokenClient) {
       setIsLoading(true);
@@ -646,24 +760,6 @@ const App: React.FC = () => {
       }
     }
   };
-
-  const handleManualSync = useCallback(async () => {
-    if (!store || books === null || isSaving) return;
-    if (saveTimeout.current) clearTimeout(saveTimeout.current);
-
-    setIsSaving(true);
-    setError(null);
-    try {
-        const updatedFile = await store.set('books', books);
-        await localStore.set(BASE_KEY, { books, revisionId: updatedFile.headRevisionId });
-        setIsSynced(true);
-    } catch (e: any) {
-        setError(e.message);
-        if (e.message.includes('sign in again')) handleSignOut();
-    } finally {
-        setIsSaving(false);
-    }
-  }, [store, books, localStore, BASE_KEY, handleSignOut, isSaving]);
 
   // --- Navigation Handlers ---
   const handleBack = () => {
@@ -775,9 +871,27 @@ const App: React.FC = () => {
         let updatedBooks = JSON.parse(JSON.stringify(books));
         
         const entryToModify = updatedBooks[selectedBookId].povs[selectedPovId].entries[selectedEntryId];
+        const wasConflicted = entryToModify.conflict;
+
         modificationFn(entryToModify, updatedBooks);
         entryToModify.dirty = false;
         
+        // If an entry was conflicted, check if the modification resolved it
+        // by removing all diff tags.
+        if (wasConflicted) {
+            const activeVersion = entryToModify.versions[entryToModify.activeVersionId];
+            const titleHasDiffs = activeVersion.title.includes('<ins>') || activeVersion.title.includes('<del>');
+            const contentHasDiffs = activeVersion.content.includes('<ins>') || activeVersion.content.includes('<del>');
+
+            if (!titleHasDiffs && !contentHasDiffs) {
+                delete entryToModify.conflict;
+                const bookToUpdate = updatedBooks[selectedBookId];
+                if (bookToUpdate.conflicts) {
+                    delete bookToUpdate.conflicts[selectedEntryId];
+                }
+            }
+        }
+
         updatedBooks = propagateDirtyState(updatedBooks, selectedBookId, selectedEntryId);
         
         setBooks(updatedBooks);
@@ -789,7 +903,7 @@ const App: React.FC = () => {
   const handleAddNewBook = async () => {
     if (!books) return;
     const newBookId = `book-${Date.now()}`;
-    const newBook = { title: "", povs: {}, relationships: [] };
+    const newBook = { title: "", povs: {}, relationships: [], conflicts: {} };
     const updatedBooks = { ...books, [newBookId]: newBook };
     setBooks(updatedBooks);
     await localStore.set(BOOKS_KEY, updatedBooks);
@@ -1896,6 +2010,52 @@ const App: React.FC = () => {
     await localStore.set(BOOKS_KEY, updatedBooks);
   }, [books, localStore, BOOKS_KEY]);
 
+  // --- Conflict Resolution Handlers ---
+    const handleRevertToCloud = useCallback(async () => {
+        if (!selectedBookId || !selectedPovId || !selectedEntryId || !books) return;
+
+        const updatedBooks = JSON.parse(JSON.stringify(books));
+        const book = updatedBooks[selectedBookId];
+        const entryToUpdate = book.povs[selectedPovId].entries[selectedEntryId];
+        const activeVersion = entryToUpdate.versions[entryToUpdate.activeVersionId];
+
+        // Revert logic: keep text from <ins>, remove <del> tags entirely.
+        activeVersion.title = activeVersion.title.replace(/<ins>(.*?)<\/ins>/g, '$1').replace(/<del>.*?<\/del>/g, '');
+        activeVersion.content = activeVersion.content.replace(/<ins>(.*?)<\/ins>/g, '$1').replace(/<del>.*?<\/del>/g, '');
+
+        // Clean up conflict state
+        delete entryToUpdate.conflict;
+        if (book.conflicts) {
+            delete book.conflicts[selectedEntryId];
+        }
+
+        setBooks(updatedBooks);
+        await localStore.set(BOOKS_KEY, updatedBooks);
+    }, [books, selectedBookId, selectedPovId, selectedEntryId, localStore, BOOKS_KEY]);
+
+    const handleReplaceCloud = useCallback(async () => {
+        if (!selectedBookId || !selectedPovId || !selectedEntryId || !books) return;
+
+        const updatedBooks = JSON.parse(JSON.stringify(books));
+        const book = updatedBooks[selectedBookId];
+        const entryToUpdate = book.povs[selectedPovId].entries[selectedEntryId];
+        const activeVersion = entryToUpdate.versions[entryToUpdate.activeVersionId];
+
+        // "Keep my version" logic: remove <ins> tags, keep text from <del>.
+        activeVersion.title = activeVersion.title.replace(/<del>(.*?)<\/del>/g, '$1').replace(/<ins>.*?<\/ins>/g, '');
+        activeVersion.content = activeVersion.content.replace(/<del>(.*?)<\/del>/g, '$1').replace(/<ins>.*?<\/ins>/g, '');
+
+        // Clean up conflict state
+        delete entryToUpdate.conflict;
+        if (book.conflicts) {
+            delete book.conflicts[selectedEntryId];
+        }
+
+        setBooks(updatedBooks);
+        await localStore.set(BOOKS_KEY, updatedBooks);
+    }, [books, selectedBookId, selectedPovId, selectedEntryId, localStore, BOOKS_KEY]);
+
+
   // --- Derived State ---
   const selectedBook = (selectedBookId && books) ? books[selectedBookId] : null;
   const selectedPov = (selectedBook && selectedPovId) ? selectedBook.povs[selectedPovId] : null;
@@ -1940,6 +2100,7 @@ const App: React.FC = () => {
             inputs: entry.inputs || [],
             outputs: entry.outputs || [],
             dirty: entry.dirty,
+            conflict: entry.conflict,
         }))
     );
     const links = (selectedBook.relationships || []).map(rel => ({
@@ -1975,6 +2136,7 @@ const App: React.FC = () => {
                   inputs: entry.inputs || [],
                   outputs: entry.outputs || [],
                   dirty: entry.dirty,
+                  conflict: entry.conflict,
               }))
           );
           allNodes.push(...bookNodes);
@@ -1992,9 +2154,6 @@ const App: React.FC = () => {
   }, [books]);
 
   const renderContent = () => {
-    if (conflict) {
-        return <ConflictModal conflict={conflict} onResolve={resolveConflict} />;
-    }
     switch (view) {
         case 'list':
             return <BookListView 
@@ -2073,26 +2232,54 @@ const App: React.FC = () => {
                         onSelectEntry={handleSelectEntry}
                         onDeleteEntry={(id, name) => handleDeleteRequest({ type: 'entry', id, name })}
                     />;
-        case 'editor':
-            // FIX: Pass the `selectedPovId` and `onPovChange` props to the EditorView component to satisfy its props interface and enable POV changing functionality from the sidebar.
+        case 'editor': {
             if (!selectedEntry || !selectedBook || !selectedBookId || !selectedPovId) return null;
+
+            let entryTitleAsHtml: string | undefined;
+            let entryContentAsHtml: string | undefined;
+
+            if (selectedEntry.conflict && selectedBook.conflicts && selectedBook.conflicts[selectedEntryId]) {
+                const conflictInfo = selectedBook.conflicts[selectedEntryId];
+                if (conflictInfo.type === 'modify-modify' && conflictInfo.local && conflictInfo.remote) {
+                    const localVersion = conflictInfo.local.versions[conflictInfo.local.activeVersionId];
+                    const remoteVersion = conflictInfo.remote.versions[conflictInfo.remote.activeVersionId];
+                    // Diff local against remote to show user what's different in the cloud version
+                    entryTitleAsHtml = generateDiffHTML(localVersion.title, remoteVersion.title);
+                    entryContentAsHtml = generateDiffHTML(localVersion.content, remoteVersion.content);
+                }
+            }
+            
             return <EditorView
                         selectedEntry={selectedEntry}
                         selectedBook={selectedBook}
                         selectedBookId={selectedBookId}
                         selectedPovId={selectedPovId}
+                        entryContentAsHtml={entryContentAsHtml}
                         onTextChange={handleTextChange}
                         onSocketAdd={handleEntrySocketAdd}
                         onSocketChange={handleEntrySocketChange}
                         onSocketDelete={handleEntrySocketDelete}
                         onSelectEntry={handleSelectEntryFromGraph}
                         onPovChange={handlePovChange}
-                        disabled={isLoading || conflict !== null}
+                        onRevertToCloud={handleRevertToCloud}
+                        onReplaceCloud={handleReplaceCloud}
+                        disabled={isLoading}
                     />;
+        }
         default:
             return null;
     }
   };
+
+  let entryTitleAsHtml: string | undefined;
+  if (view === 'editor' && selectedEntry?.conflict && selectedBook?.conflicts?.[selectedEntryId]) {
+      const conflictInfo = selectedBook.conflicts[selectedEntryId];
+      if (conflictInfo.type === 'modify-modify' && conflictInfo.local && conflictInfo.remote) {
+          const localVersion = conflictInfo.local.versions[conflictInfo.local.activeVersionId];
+          const remoteVersion = conflictInfo.remote.versions[conflictInfo.remote.activeVersionId];
+          entryTitleAsHtml = generateDiffHTML(localVersion.title, remoteVersion.title);
+      }
+  }
 
   return (
     <div className="app-container">
@@ -2105,9 +2292,11 @@ const App: React.FC = () => {
         tokenClient={tokenClient}
         accessToken={accessToken}
         isSynced={isSynced}
+        hasConflicts={hasConflicts}
         bookTitleInputRef={bookTitleInputRef}
         povTitleInputRef={povTitleInputRef}
         entryTitleInputRef={entryTitleInputRef}
+        entryTitleAsHtml={entryTitleAsHtml}
         onBack={handleBack}
         onNavigateToGraph={handleNavigateToGraph}
         onNavigateToPovList={handleNavigateToPovList}

@@ -20,6 +20,8 @@ interface EditorSidebarProps {
     onSocketChange: (type: 'input' | 'output', oldLabel: string, newLabel: string) => void;
     onSocketDelete: (type: 'input' | 'output', label: string) => void;
     onPovChange: (newPovId: string) => void;
+    onRevertToCloud: () => void;
+    onReplaceCloud: () => void;
 }
 
 const SocketSection: React.FC<{
@@ -180,7 +182,7 @@ const SocketSection: React.FC<{
     );
 };
 
-const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, selectedPovId, onSelectEntry, onSocketAdd, onSocketChange, onSocketDelete, onPovChange }) => {
+const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, selectedPovId, onSelectEntry, onSocketAdd, onSocketChange, onSocketDelete, onPovChange, onRevertToCloud, onReplaceCloud }) => {
 
     const connections = useMemo(() => {
         const allEntriesMap = new Map<string, { entry: Entry, povId: string }>();
@@ -238,6 +240,19 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, sele
 
     return (
         <div className="sidebar-content">
+            {entry.conflict && (
+                 <div className="conflict-resolution-section">
+                    <h4>Conflict Resolution</h4>
+                    <div className="conflict-resolution-actions">
+                        <button className="button secondary" onClick={onRevertToCloud}>
+                            Revert to Cloud Version
+                        </button>
+                        <button className="button primary" onClick={onReplaceCloud}>
+                            Keep My Version
+                        </button>
+                    </div>
+                </div>
+            )}
              <div className="sidebar-section">
                 <h4>Point of View</h4>
                 <select

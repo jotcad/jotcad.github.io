@@ -41,6 +41,12 @@ export const migrateBooksData = (books: Books): {migratedBooks: Books, wasMigrat
                 }
             });
         }
+        
+        // Add conflicts object if it doesn't exist
+        if (!book.conflicts) {
+            book.conflicts = {};
+            wasMigrated = true;
+        }
 
         Object.values(book.povs).forEach((pov: any) => {
             // Migration from content -> versions (very old)

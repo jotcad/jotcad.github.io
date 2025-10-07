@@ -17,13 +17,14 @@ import OutputEntry from './views/entries/OutputEntry.tsx';
 
 interface EntryProps {
     entry: Entry;
+    entryContentAsHtml?: string;
     onTextChange: (newText: string) => void;
     disabled: boolean;
 }
 
 const EntryComponent: React.FC<EntryProps> = (props) => {
     const activeVersion = props.entry.versions[props.entry.activeVersionId];
-    const content = activeVersion?.content ?? '';
+    const content = props.entryContentAsHtml ?? activeVersion?.content ?? '';
 
     switch (props.entry.type) {
         case 'input':

@@ -17,12 +17,15 @@ interface EditorViewProps {
     selectedBook: Book;
     selectedBookId: string | null;
     selectedPovId: string | null;
+    entryContentAsHtml?: string;
     onTextChange: (newText: string) => void;
     onSocketAdd: (type: 'input' | 'output', label: string) => void;
     onSocketChange: (type: 'input' | 'output', oldLabel: string, newLabel: string) => void;
     onSocketDelete: (type: 'input' | 'output', label: string) => void;
     onSelectEntry: (bookId: string, povId: string, entryId: string) => void;
     onPovChange: (newPovId: string) => void;
+    onRevertToCloud: () => void;
+    onReplaceCloud: () => void;
     disabled: boolean;
 }
 
@@ -35,6 +38,7 @@ const EditorView: React.FC<EditorViewProps> = (props) => {
             <main className="editor-main" onClick={() => { if(window.innerWidth <= 900 && isSidebarOpen) { toggleSidebar(); } }}>
                 <EntryComponent
                     entry={props.selectedEntry}
+                    entryContentAsHtml={props.entryContentAsHtml}
                     onTextChange={props.onTextChange}
                     disabled={props.disabled}
                 />
@@ -63,6 +67,8 @@ const EditorView: React.FC<EditorViewProps> = (props) => {
                     onSocketChange={props.onSocketChange}
                     onSocketDelete={props.onSocketDelete}
                     onPovChange={props.onPovChange}
+                    onRevertToCloud={props.onRevertToCloud}
+                    onReplaceCloud={props.onReplaceCloud}
                 />
             </aside>
         </div>

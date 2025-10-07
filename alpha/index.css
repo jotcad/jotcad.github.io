@@ -103,7 +103,7 @@ body {
 }
 
 
-.header-title-input {
+.header-title-input, .conflict-title-editor {
   font-family: inherit;
   font-size: 1.25rem;
   font-weight: 600;
@@ -124,11 +124,11 @@ body {
     font-weight: 500;
 }
 
-.header-title-input:hover:not(:disabled) {
+.header-title-input:hover:not(:disabled), .conflict-title-editor:hover:not([contenteditable="false"]) {
     border-bottom-color: #333;
 }
 
-.header-title-input:focus {
+.header-title-input:focus, .conflict-title-editor:focus {
     outline: none;
     box-shadow: none;
     border-bottom-style: solid;
@@ -288,6 +288,11 @@ body {
     flex-direction: row;
     align-items: center;
     gap: 1rem;
+}
+
+.book-card.conflicted {
+    border-color: #e02c2c;
+    animation: pulseRed 1.5s infinite;
 }
 
 .card-main-content {
@@ -613,25 +618,6 @@ body {
     text-align: center;
 }
 
-.conflict-container {
-    padding: 2rem;
-    text-align: center;
-    width: 100%;
-    max-width: 600px;
-    margin: auto;
-}
-.conflict-container h2 {
-    margin-bottom: 1rem;
-}
-.conflict-container p {
-    margin-bottom: 1.5rem;
-}
-.conflict-actions {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-}
-
 .sync-status-wrapper {
     position: relative;
     width: 12px;
@@ -652,6 +638,10 @@ body {
 .status-indicator-dot.offline {
     background-color: #606770; /* gray */
 }
+.status-indicator-dot.conflict {
+    background-color: #e02c2c; /* red */
+}
+
 
 .has-unsynced-ring::before {
     content: '';
@@ -664,6 +654,19 @@ body {
     border-radius: 50%;
     transform: translate(-50%, -50%);
     animation: pulse 2s infinite;
+}
+
+.has-conflicts-ring::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e02c2c; /* red */
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
@@ -681,6 +684,19 @@ body {
   }
 }
 
+@keyframes pulseRed {
+  0% {
+    box-shadow: 0 0 8px 2px rgba(224, 44, 44, 0.4), 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 12px 5px rgba(224, 44, 44, 0.7), 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 8px 2px rgba(224, 44, 44, 0.4), 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+
 .dirty-indicator {
     display: inline-block;
     width: 10px;
@@ -693,6 +709,21 @@ body {
 }
 .header-title-wrapper .dirty-indicator {
     margin-right: 0.5rem;
+}
+
+.conflict-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background-color: #e02c2c;
+    color: white;
+    font-weight: bold;
+    font-size: 0.8rem;
+    border-radius: 50%;
+    margin-right: 8px;
+    flex-shrink: 0;
 }
 
 
@@ -827,9 +858,22 @@ body {
   box-shadow: 0 0 8px 2px rgba(255, 167, 38, 0.5), 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+.entry-node-visuals.conflicted {
+  border-color: #e02c2c;
+  animation: pulseRed 1.5s infinite;
+}
+
 .entry-node-title {
+  display: flex;
+  align-items: center;
   font-weight: 600;
   color: #1c1e21;
+}
+
+.pov-prefix {
+    font-weight: 500;
+    color: #606770;
+    margin-right: 0.5em;
 }
 
 .entry-node--output .entry-node-title {
@@ -1633,7 +1677,7 @@ body {
         padding-right: 1.5rem; /* for the dropdown arrow */
         font-size: 0.8rem;
     }
-    .header-title-input {
+    .header-title-input, .conflict-title-editor {
         font-size: 1.1rem;
     }
     .header-title-wrapper {
@@ -1875,6 +1919,35 @@ body {
     font-weight: bold;
 }
 
+/* Generalized Diff and Conflict Styles */
+ins {
+    background-color: #d4edda;
+    color: #155724;
+    text-decoration: none;
+}
+
+del {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.conflict-resolution-section {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+.conflict-resolution-section h4 {
+    color: #856404;
+    margin-bottom: 0.75rem;
+}
+.conflict-resolution-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 @media (max-width: 480px) {
     .app-header {
         height: 50px;
@@ -1911,7 +1984,7 @@ body {
         padding-right: 1.25rem;
     }
 
-    .header-title-input {
+    .header-title-input, .conflict-title-editor {
         font-size: 1rem;
     }
     
@@ -1927,7 +2000,7 @@ body {
         width: 10px;
         height: 10px;
     }
-    .has-unsynced-ring::before {
+    .has-unsynced-ring::before, .has-conflicts-ring::before {
         width: 16px;
         height: 16px;
         border-width: 1.5px;

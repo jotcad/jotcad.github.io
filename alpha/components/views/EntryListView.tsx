@@ -35,9 +35,10 @@ const EntryListView: React.FC<EntryListViewProps> = ({ entries, onSelectEntry, o
                 const title = getActiveVersionTitle(entry) || 'Untitled Entry';
                 const preview = getActiveVersionContent(entry).substring(0, 100) || 'Empty';
                 return (
-                    <div key={entryId} className="book-card">
+                    <div key={entryId} className={`book-card ${entry.conflict ? 'conflicted' : ''}`}>
                         <div className="card-main-content" onClick={() => onSelectEntry(entryId)} tabIndex={0}>
                             <h2 className="book-card-title">
+                                {entry.conflict && <span className="conflict-indicator" title="Sync Conflict: Edit to resolve">!</span>}
                                 {entry.dirty && <span className="dirty-indicator" title="This entry's inputs have changed and it may need updates."></span>}
                                 {title}
                             </h2>

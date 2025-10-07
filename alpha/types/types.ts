@@ -31,6 +31,7 @@ export interface Entry {
     inputs?: string[]; // Array of input socket labels
     outputs?: string[]; // Array of output socket labels
     dirty?: boolean; // Flag to indicate if dependencies have changed
+    conflict?: boolean; // Flag to indicate the entry is in a conflicted state
 }
 
 export interface Pov {
@@ -51,6 +52,7 @@ export interface Book {
   title: string;
   povs: Record<string, Pov>;
   relationships?: Relationship[];
+  conflicts?: Record<string, Omit<EntryConflict, 'bookId' | 'bookTitle' | 'povTitle'>>;
 }
 
 export type Books = Record<string, Book>; // Map of bookId -> Book
@@ -71,6 +73,7 @@ export interface GraphNode {
     inputs?: string[];
     outputs?: string[];
     dirty?: boolean;
+    conflict?: boolean;
 }
 
 
@@ -86,8 +89,15 @@ export interface BaseData<T> {
     revisionId: string | null;
 }
 
-export interface Conflict<T> {
-    local: T;
-    remote: T;
-    remoteRevisionId: string | null;
+export interface EntryConflict {
+    bookId: string;
+    bookTitle: string;
+    povId: string;
+    povTitle: string;
+    entryId: string;
+    base?: Entry;
+    local?: Entry;
+    remote?: Entry;
+    merged?: Entry;
+    type: 'modify-modify' | 'delete-modify' | 'modify-delete' | 'add-add';
 }

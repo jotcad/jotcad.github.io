@@ -15,7 +15,6 @@ import { SocketPosition, SocketSide, SocketInfo } from './types.ts';
 
 interface EntryNodeProps {
     node: GraphNode & { x: number, y: number }; // position is guaranteed here
-    povColor?: string;
     povTitle?: string;
     renderableSocketsForNode: { [key in SocketSide]: SocketInfo[] };
     socketPositionLayoutForNode: { inputs: Map<string, SocketPosition>; outputs: Map<string, SocketPosition> };
@@ -41,7 +40,6 @@ interface EntryNodeProps {
 
 const EntryNode: React.FC<EntryNodeProps> = ({
     node,
-    povColor,
     povTitle,
     renderableSocketsForNode,
     socketPositionLayoutForNode,
@@ -148,10 +146,6 @@ const EntryNode: React.FC<EntryNodeProps> = ({
     // have editable sockets. The previous check was redundant.
     const areSocketsEditable = true;
     
-    const visualStyle = {
-        borderTop: povColor ? `4px solid ${povColor}` : undefined,
-    };
-
     return (
         <div
             key={node.id}
@@ -161,8 +155,7 @@ const EntryNode: React.FC<EntryNodeProps> = ({
             title={povTitle}
         >
             <div
-                className={`entry-node-visuals ${nodeTypeClass} ${node.dirty ? 'dirty' : ''}`}
-                style={visualStyle}
+                className={`entry-node-visuals ${nodeTypeClass} ${node.dirty ? 'dirty' : ''} ${node.conflict ? 'conflicted' : ''}`}
             >
                 {(['top', 'right', 'bottom', 'left'] as SocketSide[]).map(side => (
                     <div key={side} className={`socket-container ${side}`}>
@@ -236,75 +229,63 @@ const EntryNode: React.FC<EntryNodeProps> = ({
                 ))}
 
                 <div className="entry-node-body">
-                    {/* FIX: Removed the `node.type === 'input'` branch from the ternary expression.
-                        The component returns early for 'input' types, so this code path is unreachable. */}
-                    <p className="entry-node-title">{node.title}</p>
+                    <div className="entry-node-title">{node.title || 'Untitled Entry'}</div>
+                    <div className="entry-node-actions">
+                        <button className="generate-ideas-button" onClick={() => onGenerateIdeas(node)} title="Generate related ideas using AI">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2.14a8 8 0 0 1 12.86 12.86"/><path d="M12 22a10 10 0 0 0 10-10c0-5.52-4.48-10-10-10a10 10 0 0 0-10 10c0 .44.03.88.08 1.31"/><path d="M12 22a10 10 0 0 1-9.92-8.69"/><path d="M2.5 13.5h5l2.5-4 2.5 4h5"/><path d="m18 19-3-3 3-3"/></svg>
+                        </button>
+                         {areSocketsEditable && (
+                            <button
+                                className="add-input-socket-button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const tempLabel = `__editing_${Date.now()}`;
+                                    onAddSocket(node, 'input', tempLabel);
+                                    setInlineEditingSocket({
+                                        nodeId: node.id,
+                                        type: 'input',
+                                        label: tempLabel,
+                                        currentValue: '',
+                                    });
+                                }}
+                                title="Add Input"
+                            >+ in</button>
+                        )}
+                        {areSocketsEditable && (
+                            <button
+                                className="add-output-socket-button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const tempLabel = `__editing_${Date.now()}`;
+                                    onAddSocket(node, 'output', tempLabel);
+                                    setInlineEditingSocket({
+                                        nodeId: node.id,
+                                        type: 'output',
+                                        label: tempLabel,
+                                        currentValue: '',
+                                    });
+                                }}
+                                title="Add Output"
+                            >+ out</button>
+                        )}
+                        <button className="delete-entry-node-button" onMouseDown={(e) => { e.stopPropagation(); onDeleteEntry(node); }} aria-label={`Delete entry: ${node.title}`}>
+                            &times;
+                        </button>
+                        {(node.type === 'js' || node.type === 'nl') && node.dirty && (
+                            <button
+                                className="refresh-button"
+                                onClick={() => { node.type === 'js' ? onRecomputeCode(node) : onRecomputeNL(node) }}
+                                title={`Re-run ${node.type === 'js' ? 'JS code' : 'NL prompt'}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
-
-                {(node.type === 'prose' || !node.type) && (
-                    <button className="generate-ideas-button" onMouseDown={(e) => { e.stopPropagation(); onGenerateIdeas(node); }} aria-label={`Generate ideas from: ${node.title}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M10 3L8 8l-5 2 5 2 2 5 2-5 5-2-5-2-2-5Z"></path>
-                            <path d="M18 13l-2-2 2-2 2 2-2 2Z"></path>
-                        </svg>
-                    </button>
-                )}
-                {node.type === 'js' && (
-                    <button className="refresh-button" onMouseDown={(e) => { e.stopPropagation(); onRecomputeCode(node); }} aria-label={`Recompute outputs for: ${node.title}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
-                    </button>
-                )}
-                {node.type === 'nl' && (
-                    <button className="refresh-button nl-refresh-button" onMouseDown={(e) => { e.stopPropagation(); onRecomputeNL(node); }} aria-label={`Recompute outputs for: ${node.title}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
-                    </button>
-                )}
-                <button className="delete-entry-node-button" onMouseDown={(e) => { e.stopPropagation(); onDeleteEntry(node); }} aria-label={`Delete entry: ${node.title || 'value node'}`}>
-                    &times;
-                </button>
-                {areSocketsEditable && (
-                    <>
-                        <button
-                            className="add-input-socket-button"
-                            onMouseDown={(e) => {
-                                e.stopPropagation();
-                                ignoreNextBlur.current = true;
-                                const tempLabel = `__editing_${Date.now()}`;
-                                onAddSocket(node, 'input', tempLabel);
-                                setInlineEditingSocket({
-                                    nodeId: node.id,
-                                    type: 'input',
-                                    label: tempLabel,
-                                    currentValue: ''
-                                });
-                            }}
-                            aria-label="Add input socket"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-                        </button>
-                        <button
-                            className="add-output-socket-button"
-                            onMouseDown={(e) => {
-                                e.stopPropagation();
-                                ignoreNextBlur.current = true;
-                                const tempLabel = `__editing_${Date.now()}`;
-                                onAddSocket(node, 'output', tempLabel);
-                                setInlineEditingSocket({
-                                    nodeId: node.id,
-                                    type: 'output',
-                                    label: tempLabel,
-                                    currentValue: ''
-                                });
-                            }}
-                            aria-label="Add output socket"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                        </button>
-                    </>
-                )}
             </div>
         </div>
     );
 };
 
+// FIX: Add default export for the EntryNode component.
 export default EntryNode;

@@ -23,8 +23,9 @@ const BookListView: React.FC<BookListViewProps> = ({ books, onSelectBook, onDele
         <div className="book-list-container">
             {Object.entries(books).map(([bookId, book]: [string, Book]) => {
                 const povCount = Object.keys(book.povs || {}).length;
+                const isConflicted = book.conflicts && Object.keys(book.conflicts).length > 0;
                 return (
-                    <div key={bookId} className="book-card">
+                    <div key={bookId} className={`book-card ${isConflicted ? 'conflicted' : ''}`}>
                         <div className="card-main-content" onClick={() => onSelectBook(bookId)} tabIndex={0}>
                             <h2 className="book-card-title">{book.title || 'Untitled Book'}</h2>
                             <p className="book-card-preview">

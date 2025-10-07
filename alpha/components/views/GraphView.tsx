@@ -202,12 +202,6 @@ const getConnectionPoints = (
     return { pathD, arrows };
 };
 
-const POV_COLORS = [
-    '#3366CC', '#DC3912', '#FF9900', '#109618', '#990099', '#0099C6',
-    '#DD4477', '#66AA00', '#B82E2E', '#316395', '#994499', '#22AA99',
-    '#AAAA11', '#6633CC', '#E67300', '#8B0707', '#651067', '#329262'
-];
-
 
 const GraphView: React.FC<GraphViewProps> = ({
     nodes: memoizedNodes,
@@ -382,15 +376,6 @@ const GraphView: React.FC<GraphViewProps> = ({
         finalNodes.forEach(node => positions.set(node.id, { x: node.x ?? 0, y: node.y ?? 0 }));
         return positions;
     }, [finalNodes]);
-
-    const povColors = useMemo(() => {
-        const povIds = [...new Set(memoizedNodes.map(n => n.povId))];
-        const colorMap = new Map<string, string>();
-        povIds.forEach((povId, index) => {
-            colorMap.set(povId, POV_COLORS[index % POV_COLORS.length]);
-        });
-        return colorMap;
-    }, [memoizedNodes]);
 
     const { socketPositionLayout, renderableSockets } = useMemo(() => {
         const updatedNodes = memoizedNodes.map(n => {
@@ -1168,7 +1153,6 @@ const GraphView: React.FC<GraphViewProps> = ({
                             <EntryNode
                                 key={node.id}
                                 node={node}
-                                povColor={povColors.get(node.povId)}
                                 povTitle={node.povTitle}
                                 renderableSocketsForNode={nodeSockets}
                                 socketPositionLayoutForNode={layout}

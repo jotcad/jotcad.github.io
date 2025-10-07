@@ -11,7 +11,7 @@
  * It receives all its data and callbacks as props from the main App component.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Books, Entry } from '../types/types.ts';
 
 interface HeaderProps {
@@ -23,9 +23,11 @@ interface HeaderProps {
     tokenClient: any;
     accessToken: string | null;
     isSynced: boolean;
+    hasConflicts: boolean;
     bookTitleInputRef: React.RefObject<HTMLInputElement>;
     povTitleInputRef: React.RefObject<HTMLInputElement>;
-    entryTitleInputRef: React.RefObject<HTMLInputElement>;
+    entryTitleInputRef: React.RefObject<HTMLDivElement>;
+    entryTitleAsHtml?: string;
     onBack: () => void;
     onNavigateToGraph: () => void;
     onNavigateToPovList: () => void;
@@ -50,8 +52,8 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = (props) => {
     const {
         view, books, selectedBookId, selectedPovId, selectedEntry,
-        tokenClient, accessToken, isSynced,
-        bookTitleInputRef, povTitleInputRef, entryTitleInputRef,
+        tokenClient, accessToken, isSynced, hasConflicts,
+        bookTitleInputRef, povTitleInputRef, entryTitleInputRef, entryTitleAsHtml,
         onBack, onNavigateToGraph, onNavigateToPovList, onNavigateToGlobalGraph, onNavigateToList,
         onEntryTitleChange, onEntryTypeChange, onBookTitleChange, onPovTitleChange,
         onAddNewBook, onAddNewPov, onAddNewEntry,
@@ -60,6 +62,10 @@ const Header: React.FC<HeaderProps> = (props) => {
     } = props;
     
     const handleSyncButtonClick = () => {
+        if (hasConflicts) {
+            alert("Please resolve all sync conflicts before saving to the cloud. Conflicted items are highlighted in red.");
+            return;
+        }
         if (!accessToken) {
             onSignIn();
         } else if (!isSynced) {
@@ -70,6 +76,15 @@ const Header: React.FC<HeaderProps> = (props) => {
     };
 
     const activeVersionTitle = selectedEntry ? selectedEntry.versions[selectedEntry.activeVersionId]?.title ?? '' : '';
+
+    const internalTitleRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const titleToShow = entryTitleAsHtml || activeVersionTitle;
+        if (internalTitleRef.current && internalTitleRef.current.innerHTML !== titleToShow) {
+            internalTitleRef.current.innerHTML = titleToShow;
+        }
+    }, [entryTitleAsHtml, activeVersionTitle]);
 
     const renderCenterContent = () => {
         if (view === 'editor' && selectedEntry) {
@@ -88,14 +103,17 @@ const Header: React.FC<HeaderProps> = (props) => {
                         <option value="js">JS</option>
                         <option value="nl">NL</option>
                     </select>
-                    <input
+                    <div
                         id="entryTitleInput"
-                        ref={entryTitleInputRef}
-                        type="text"
-                        className="header-title-input"
-                        value={activeVersionTitle}
-                        onChange={(e) => onEntryTitleChange(e.target.value)}
-                        placeholder="Untitled Entry"
+                        ref={(el) => {
+                            internalTitleRef.current = el;
+                            if (entryTitleInputRef) {
+                                (entryTitleInputRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+                            }
+                        }}
+                        contentEditable
+                        className="header-title-input conflict-title-editor"
+                        onInput={(e) => onEntryTitleChange(e.currentTarget.innerHTML)}
                         aria-label="Entry Title"
                     />
                 </div>
@@ -231,27 +249,32 @@ const Header: React.FC<HeaderProps> = (props) => {
                     className="header-button icon-button"
                     disabled={!accessToken && !tokenClient}
                     aria-label={
-                        !accessToken
-                            ? `Status: Offline${!isSynced ? ' with unsaved changes' : ''}. Click to sign in.`
-                            : isSynced
-                                ? 'Status: Synced. Click to sign out.'
-                                : 'Status: Unsynced. Click to sync now.'
+                        hasConflicts
+                            ? 'Status: Conflicts detected. Resolve conflicts to sync.'
+                            : !accessToken
+                                ? `Status: Offline${!isSynced ? ' with unsaved changes' : ''}. Click to sign in.`
+                                : isSynced
+                                    ? 'Status: Synced. Click to sign out.'
+                                    : 'Status: Unsynced. Click to sync now.'
                     }
                     title={
+                        hasConflicts ? 'Conflicts detected' :
                         !accessToken ? 'Sign In' :
                         isSynced ? 'Sign Out' :
                         'Sync Now'
                     }
                 >
                     <div
-                        className={`sync-status-wrapper ${!isSynced ? 'has-unsynced-ring' : ''}`}
+                        className={`sync-status-wrapper ${hasConflicts ? 'has-conflicts-ring' : !isSynced ? 'has-unsynced-ring' : ''}`}
                         title={
-                            !accessToken
-                                ? `Status: Offline${!isSynced ? ' with unsaved local changes' : ''}`
-                                : `Status: ${isSynced ? 'Synced' : 'Unsynced Changes'}`
+                            hasConflicts
+                                ? 'Status: Conflicts detected. Please resolve them.'
+                                : !accessToken
+                                    ? `Status: Offline${!isSynced ? ' with unsaved local changes' : ''}`
+                                    : `Status: ${isSynced ? 'Synced' : 'Unsynced Changes'}`
                         }
                     >
-                        <span className={`status-indicator-dot ${!accessToken ? 'offline' : 'online'}`}></span>
+                        <span className={`status-indicator-dot ${hasConflicts ? 'conflict' : !accessToken ? 'offline' : 'online'}`}></span>
                     </div>
                 </button>
             </div>
