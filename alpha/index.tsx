@@ -2033,7 +2033,7 @@ const App: React.FC = () => {
         await localStore.set(BOOKS_KEY, updatedBooks);
     }, [books, selectedBookId, selectedPovId, selectedEntryId, localStore, BOOKS_KEY]);
 
-    const handleReplaceCloud = useCallback(async () => {
+    const handleOverrideCloud = useCallback(async () => {
         if (!selectedBookId || !selectedPovId || !selectedEntryId || !books) return;
 
         const updatedBooks = JSON.parse(JSON.stringify(books));
@@ -2041,7 +2041,7 @@ const App: React.FC = () => {
         const entryToUpdate = book.povs[selectedPovId].entries[selectedEntryId];
         const activeVersion = entryToUpdate.versions[entryToUpdate.activeVersionId];
 
-        // "Keep my version" logic: remove <ins> tags, keep text from <del>.
+        // "Override" logic: remove <ins> tags, keep text from <del>.
         activeVersion.title = activeVersion.title.replace(/<del>(.*?)<\/del>/g, '$1').replace(/<ins>.*?<\/ins>/g, '');
         activeVersion.content = activeVersion.content.replace(/<del>(.*?)<\/del>/g, '$1').replace(/<ins>.*?<\/ins>/g, '');
 
@@ -2051,6 +2051,30 @@ const App: React.FC = () => {
             delete book.conflicts[selectedEntryId];
         }
 
+        setBooks(updatedBooks);
+        await localStore.set(BOOKS_KEY, updatedBooks);
+    }, [books, selectedBookId, selectedPovId, selectedEntryId, localStore, BOOKS_KEY]);
+
+    const handleSaveMergedConflict = useCallback(async () => {
+        if (!selectedBookId || !selectedPovId || !selectedEntryId || !books) return;
+    
+        const updatedBooks = JSON.parse(JSON.stringify(books));
+        const book = updatedBooks[selectedBookId];
+        const entryToUpdate = book.povs[selectedPovId].entries[selectedEntryId];
+        const activeVersion = entryToUpdate.versions[entryToUpdate.activeVersionId];
+    
+        // "Save" logic: clean up any remaining diff tags from the user's manual edit.
+        // This regex replaces `<ins>text</ins>` with `text` and `<del>text</del>` with `text`.
+        const cleanupRegex = /<(?:ins|del)>(.*?)<\/(?:ins|del)>/g;
+        activeVersion.title = activeVersion.title.replace(cleanupRegex, '$1');
+        activeVersion.content = activeVersion.content.replace(cleanupRegex, '$1');
+    
+        // Clean up conflict state
+        delete entryToUpdate.conflict;
+        if (book.conflicts) {
+            delete book.conflicts[selectedEntryId];
+        }
+    
         setBooks(updatedBooks);
         await localStore.set(BOOKS_KEY, updatedBooks);
     }, [books, selectedBookId, selectedPovId, selectedEntryId, localStore, BOOKS_KEY]);
@@ -2262,7 +2286,9 @@ const App: React.FC = () => {
                         onSelectEntry={handleSelectEntryFromGraph}
                         onPovChange={handlePovChange}
                         onRevertToCloud={handleRevertToCloud}
-                        onReplaceCloud={handleReplaceCloud}
+                        onOverrideCloud={handleOverrideCloud}
+                        onSaveMergedConflict={handleSaveMergedConflict}
+                        onEntryTypeChange={handleEntryTypeChange}
                         disabled={isLoading}
                     />;
         }
@@ -2303,7 +2329,6 @@ const App: React.FC = () => {
         onNavigateToGlobalGraph={handleNavigateToGlobalGraph}
         onNavigateToList={handleNavigateToList}
         onEntryTitleChange={handleEntryTitleChange}
-        onEntryTypeChange={handleEntryTypeChange}
         onBookTitleChange={handleBookTitleChange}
         onPovTitleChange={handlePovTitleChange}
         onAddNewBook={handleAddNewBook}

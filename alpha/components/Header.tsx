@@ -34,7 +34,6 @@ interface HeaderProps {
     onNavigateToGlobalGraph: () => void;
     onNavigateToList: () => void;
     onEntryTitleChange: (newTitle: string) => void;
-    onEntryTypeChange: (newType: 'prose' | 'js' | 'nl') => void;
     onBookTitleChange: (newTitle: string) => void;
     onPovTitleChange: (newTitle: string) => void;
     onAddNewBook: () => void;
@@ -55,7 +54,7 @@ const Header: React.FC<HeaderProps> = (props) => {
         tokenClient, accessToken, isSynced, hasConflicts,
         bookTitleInputRef, povTitleInputRef, entryTitleInputRef, entryTitleAsHtml,
         onBack, onNavigateToGraph, onNavigateToPovList, onNavigateToGlobalGraph, onNavigateToList,
-        onEntryTitleChange, onEntryTypeChange, onBookTitleChange, onPovTitleChange,
+        onEntryTitleChange, onBookTitleChange, onPovTitleChange,
         onAddNewBook, onAddNewPov, onAddNewEntry,
         onOpenSaveVersionModal, onOpenVersionSelector, onOpenSettings, onOpenRelationshipModal,
         onSignIn, onSignOut, onManualSync
@@ -93,16 +92,6 @@ const Header: React.FC<HeaderProps> = (props) => {
                     {selectedEntry.dirty && (
                         <span className="dirty-indicator" title="This entry's inputs have changed and it may need updates."></span>
                     )}
-                    <select
-                        className="header-type-selector"
-                        value={selectedEntry.type || 'prose'}
-                        onChange={(e) => onEntryTypeChange(e.target.value as 'prose' | 'js' | 'nl')}
-                        aria-label="Entry Type"
-                    >
-                        <option value="prose">Prose</option>
-                        <option value="js">JS</option>
-                        <option value="nl">NL</option>
-                    </select>
                     <div
                         id="entryTitleInput"
                         ref={(el) => {
@@ -155,11 +144,11 @@ const Header: React.FC<HeaderProps> = (props) => {
         }
         return (
             <h1>
-                {view === 'list' ? 'Author 0.0.1' :
+                {view === 'list' ? 'Author 0.0.3' :
                  view === 'globalGraph' ? 'All Books' :
                  view === 'povList' || view === 'graph' ? (books?.[selectedBookId]?.title || 'Book') :
                  view === 'entryList' ? (books?.[selectedBookId]?.povs?.[selectedPovId]?.title || 'Point of View') :
-                 'Author 0.0.1'
+                 'Author 0.0.3'
                 }
             </h1>
         );

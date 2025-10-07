@@ -25,7 +25,9 @@ interface EditorViewProps {
     onSelectEntry: (bookId: string, povId: string, entryId: string) => void;
     onPovChange: (newPovId: string) => void;
     onRevertToCloud: () => void;
-    onReplaceCloud: () => void;
+    onOverrideCloud: () => void;
+    onSaveMergedConflict: () => void;
+    onEntryTypeChange: (newType: 'prose' | 'js' | 'nl') => void;
     disabled: boolean;
 }
 
@@ -68,7 +70,9 @@ const EditorView: React.FC<EditorViewProps> = (props) => {
                     onSocketDelete={props.onSocketDelete}
                     onPovChange={props.onPovChange}
                     onRevertToCloud={props.onRevertToCloud}
-                    onReplaceCloud={props.onReplaceCloud}
+                    onOverrideCloud={props.onOverrideCloud}
+                    onSaveMergedConflict={props.onSaveMergedConflict}
+                    onEntryTypeChange={props.onEntryTypeChange}
                 />
             </aside>
         </div>

@@ -77,6 +77,7 @@ body {
 .header-center {
   text-align: left;
   overflow: hidden;
+  min-width: 0;
 }
 
 .header-center h1 {
@@ -133,32 +134,6 @@ body {
     box-shadow: none;
     border-bottom-style: solid;
     border-bottom-color: #1877f2;
-}
-
-.header-type-selector {
-    font-family: inherit;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
-    background-color: #f0f2f5;
-    border: 2px solid #1877f2;
-    border-radius: 8px;
-    height: 48px;
-    padding: 0 0.5rem;
-    cursor: pointer;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 0.5rem center;
-    background-size: 1em;
-    padding-right: 2rem;
-}
-.header-type-selector:focus {
-    outline: none;
-    border-color: #166fe5;
-    box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.2);
 }
 
 .header-back-button {
@@ -1661,7 +1636,7 @@ body {
     .header-button span, .view-toggle-button span {
         display: none;
     }
-    .header-button, .view-toggle-button, .header-back-button, .header-type-selector {
+    .header-button, .view-toggle-button, .header-back-button {
         height: 44px;
         min-width: 44px;
     }
@@ -1671,11 +1646,6 @@ body {
     .header-button, .view-toggle-button {
       padding: 0;
       width: 44px;
-    }
-    .header-type-selector {
-        padding-left: 0.25rem;
-        padding-right: 1.5rem; /* for the dropdown arrow */
-        font-size: 0.8rem;
     }
     .header-title-input, .conflict-title-editor {
         font-size: 1.1rem;
@@ -1796,7 +1766,7 @@ body {
     margin-bottom: 0.25rem;
 }
 
-.sidebar-pov-selector {
+.sidebar-select {
     width: 100%;
     padding: 0.5rem;
     border: 1px solid #ccd0d5;
@@ -1805,7 +1775,8 @@ body {
     background-color: #fff;
     margin-top: 0.5rem;
 }
-.sidebar-pov-selector:disabled {
+
+.sidebar-select:disabled {
     background-color: #f0f2f5;
     color: #8a8d91;
 }
@@ -1959,9 +1930,14 @@ del {
         gap: 0.25rem;
     }
 
-    .header-button, .view-toggle-button, .header-back-button, .header-type-selector {
+    .header-button, .view-toggle-button, .header-back-button {
         height: 36px;
         min-width: 36px;
+    }
+    
+    .sidebar-select {
+        font-size: 0.75rem;
+        padding-right: 1.25rem;
     }
 
     .view-toggle-group {
@@ -1977,11 +1953,6 @@ del {
     .header-back-button svg {
         width: 18px;
         height: 18px;
-    }
-
-    .header-type-selector {
-        font-size: 0.75rem;
-        padding-right: 1.25rem;
     }
 
     .header-title-input, .conflict-title-editor {

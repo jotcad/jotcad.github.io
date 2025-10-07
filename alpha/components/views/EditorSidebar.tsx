@@ -21,7 +21,9 @@ interface EditorSidebarProps {
     onSocketDelete: (type: 'input' | 'output', label: string) => void;
     onPovChange: (newPovId: string) => void;
     onRevertToCloud: () => void;
-    onReplaceCloud: () => void;
+    onOverrideCloud: () => void;
+    onSaveMergedConflict: () => void;
+    onEntryTypeChange: (newType: 'prose' | 'js' | 'nl') => void;
 }
 
 const SocketSection: React.FC<{
@@ -182,7 +184,7 @@ const SocketSection: React.FC<{
     );
 };
 
-const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, selectedPovId, onSelectEntry, onSocketAdd, onSocketChange, onSocketDelete, onPovChange, onRevertToCloud, onReplaceCloud }) => {
+const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, selectedPovId, onSelectEntry, onSocketAdd, onSocketChange, onSocketDelete, onPovChange, onRevertToCloud, onOverrideCloud, onSaveMergedConflict, onEntryTypeChange }) => {
 
     const connections = useMemo(() => {
         const allEntriesMap = new Map<string, { entry: Entry, povId: string }>();
@@ -243,20 +245,31 @@ const EditorSidebar: React.FC<EditorSidebarProps> = ({ entry, book, bookId, sele
             {entry.conflict && (
                  <div className="conflict-resolution-section">
                     <h4>Conflict Resolution</h4>
+                    <p className="modal-info-text">This entry was edited on another device. You can manually edit the text, or choose an option below.</p>
                     <div className="conflict-resolution-actions">
-                        <button className="button secondary" onClick={onRevertToCloud}>
-                            Revert to Cloud Version
-                        </button>
-                        <button className="button primary" onClick={onReplaceCloud}>
-                            Keep My Version
-                        </button>
+                        <button className="button secondary" onClick={onRevertToCloud}>Revert</button>
+                        <button className="button primary" onClick={onOverrideCloud}>Override</button>
+                        <button className="button secondary" onClick={onSaveMergedConflict}>Save</button>
                     </div>
                 </div>
             )}
              <div className="sidebar-section">
+                <h4>Entry Type</h4>
+                 <select
+                    className="sidebar-select"
+                    value={entry.type || 'prose'}
+                    onChange={(e) => onEntryTypeChange(e.target.value as 'prose' | 'js' | 'nl')}
+                    aria-label="Entry Type"
+                >
+                    <option value="prose">Prose</option>
+                    <option value="js">JS</option>
+                    <option value="nl">NL</option>
+                </select>
+            </div>
+             <div className="sidebar-section">
                 <h4>Point of View</h4>
                 <select
-                    className="sidebar-pov-selector"
+                    className="sidebar-select"
                     value={selectedPovId || ''}
                     onChange={(e) => onPovChange(e.target.value)}
                     disabled={Object.keys(book.povs).length <= 1}
